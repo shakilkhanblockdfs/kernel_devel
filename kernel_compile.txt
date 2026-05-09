@@ -1,0 +1,129 @@
+Steps to download, compile, install, and boot a Linux kernel on Ubuntu 24.04
+
+Assumptions
+- You are running Ubuntu 24.04.
+- You have sudo access.
+- You want to build a kernel from kernel.org source.
+- You will install the kernel locally and boot into it from GRUB.
+
+1. Update the system package index
+
+   sudo apt update
+
+2. Install required build dependencies
+
+   sudo apt install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev bc dwarves git wget rsync cpio pahole
+
+3. Create a working directory
+
+   mkdir -p ~/kernel-build
+   cd ~/kernel-build
+
+4. Download the Linux kernel source
+
+   Go to https://www.kernel.org and choose a stable kernel version.
+   Example:
+
+   wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.8.12.tar.xz
+
+5. Extract the source archive
+
+   tar -xf linux-6.8.12.tar.xz
+   cd linux-6.8.12
+
+6. Copy the current Ubuntu kernel configuration
+
+   cp /boot/config-$(uname -r) .config
+
+7. Update the configuration for the downloaded kernel source
+
+   make olddefconfig
+
+   Optional: open the interactive kernel configuration menu
+
+   make menuconfig
+
+8. Compile the kernel
+
+   Use all available CPU cores:
+
+   make -j$(nproc)
+
+   This can take a long time depending on your machine.
+
+9. Compile kernel modules
+
+   make modules -j$(nproc)
+
+10. Install kernel modules
+
+   sudo make modules_install
+
+11. Install the kernel
+
+   sudo make install
+
+   This usually copies the kernel image, System.map, and config into /boot.
+
+12. Update GRUB
+
+   sudo update-grub
+
+13. Reboot the machine
+
+   sudo reboot
+
+14. Select the new kernel from GRUB if needed
+
+   If Ubuntu does not boot into the new kernel automatically:
+
+   - Hold Shift or press Esc during boot to show the GRUB menu.
+   - Choose Advanced options for Ubuntu.
+   - Select the newly compiled kernel version.
+
+15. Verify the running kernel after boot
+
+   uname -r
+
+   The output should match the kernel version you compiled.
+
+Optional: build Debian packages instead of installing directly
+
+Ubuntu users often prefer building installable .deb packages:
+
+   sudo apt install -y debhelper-compat
+   make -j$(nproc) bindeb-pkg
+
+The generated .deb files will appear in the parent directory. Install them with:
+
+   cd ..
+   sudo dpkg -i linux-image-*.deb linux-headers-*.deb
+   sudo update-grub
+   sudo reboot
+
+Optional: remove a custom kernel
+
+1. Boot into a different kernel first.
+2. Check installed kernel packages:
+
+   dpkg --list | grep linux-image
+
+3. Remove the custom kernel package if installed from .deb:
+
+   sudo apt remove linux-image-<version>
+
+4. If installed manually with make install, remove matching files carefully:
+
+   sudo rm /boot/vmlinuz-<version>
+   sudo rm /boot/initrd.img-<version>
+   sudo rm /boot/System.map-<version>
+   sudo rm /boot/config-<version>
+   sudo rm -rf /lib/modules/<version>
+   sudo update-grub
+
+Notes
+- Keep at least one known-working Ubuntu kernel installed.
+- Do not remove your current running kernel.
+- Building a kernel can require several gigabytes of disk space.
+- Secure Boot may prevent an unsigned custom kernel or module from loading.
+- If Secure Boot is enabled, either disable Secure Boot in firmware settings or sign the kernel/modules.
